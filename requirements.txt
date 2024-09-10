@@ -3,4 +3,4 @@ pandas
 numpy
 scikit-learn
 keras
-tensorflow
+tensorflow==2.13.0
