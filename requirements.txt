@@ -3,4 +3,4 @@ pandas
 numpy
 scikit-learn
 
-tensorflow==2.10
+tensorflow==2.10.0
