@@ -1,6 +1,5 @@
-
+tensorflow==2.1.0
+scikit-learn==0.22.2
 pandas
 numpy
-scikit-learn
 
-tensorflow
