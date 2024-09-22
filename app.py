@@ -12,6 +12,28 @@ balance_data = pd.read_csv('balance.csv')
 # Merge datasets on common columns
 merged_data = pd.merge(income_data, balance_data, on=['symbol', 'fiscalDateEnding'])
 
+# Company name mapping
+company_names = {
+    'AAPL': 'Apple Inc.',
+    'MSFT': 'Microsoft Corporation',
+    'GOOGL': 'Alphabet Inc.',
+    'META': 'Meta Platforms, Inc.',
+    'VZ': 'Verizon Communications Inc.',
+    'AMZN': 'Amazon.com, Inc.',
+    'HD': 'The Home Depot, Inc.',
+    'JPM': 'JPMorgan Chase & Co.',
+    'V': 'Visa Inc.',
+    'JNJ': 'Johnson & Johnson',
+    'PFE': 'Pfizer Inc.',
+    'WMT': 'Walmart Inc.',
+    'PG': 'The Procter & Gamble Company',
+    'GE': 'General Electric Company',
+    'XOM': 'Exxon Mobil Corporation'
+}
+
+# Reverse mapping from company names to symbols
+company_names_reverse = {v: k for k, v in company_names.items()}
+
 # Function to preprocess data
 def preprocess_data(company_data, look_back=4):
     company_data = company_data.sort_values('fiscalDateEnding')
@@ -183,43 +205,39 @@ def get_investment_recommendation(ratios, company):
                     recommendations[key].append('Good')
                 else:
                     recommendations[key].append('Bad')
+    
     return recommendations
 
-# Function to get overall recommendation with weights
+# Function to get overall investment recommendation
 def get_overall_recommendation(recommendations):
-    weights = {
-        'gross_margin': 1.0,
-        'operating_margin': 1.0,
-        'net_income_margin': 1.0,
-        'return_on_assets': 1.0,
-        'return_on_equity': 1.0,
-        'current_ratio': 0.5,
-        'debt_to_equity_ratio': 0.5,
-        'asset_turnover_ratio': 0.5
-    }
+    good_count = sum([1 for key in recommendations.keys() for value in recommendations[key] if value == 'Good'])
+    total_count = sum([len(recommendations[key]) for key in recommendations.keys()])
     
-    weighted_score = 0
-    total_weight = sum(weights.values())
-    
-    for key, values in recommendations.items():
-        weight = weights.get(key, 1.0)
-        for value in values:
-            if value == 'Good':
-                weighted_score += weight
-    
-    score_ratio = weighted_score / (total_weight * len(recommendations.values()))
-    return 'Invest' if score_ratio > 0.1 else 'Do not Invest'
+    if good_count / total_count >= 0.7:
+        return "Strong Buy"
+    elif good_count / total_count >= 0.5:
+        return "Buy"
+    elif good_count / total_count >= 0.3:
+        return "Hold/Do not buy"
+    else:
+        return "Sell/Do not Buy"
 
 # Streamlit app
 st.title("Financial Ratios and Investment Recommendation")
 
+# Get company names instead of symbols
 company_symbols = merged_data['symbol'].unique()
-selected_companies = st.multiselect("Select companies:", company_symbols)
+company_names_list = [company_names[symbol] for symbol in company_symbols if symbol in company_names]
 
-if selected_companies:
+selected_companies = st.multiselect("Select companies:", company_names_list)
+
+# Get the ticker symbols for the selected companies
+selected_symbols = [company_names_reverse[name] for name in selected_companies]
+
+if selected_symbols:
     option = st.radio("Select an option:", ["Each Financial Ratio Separately", "All Financial Ratios and Insights"])
     
-    for company in selected_companies:
+    for company in selected_symbols:
         company_data = merged_data[merged_data['symbol'] == company]
         X_datasets, Y_datasets, scaled_data, scalers = preprocess_data(company_data, look_back=4)
         
@@ -247,7 +265,8 @@ if selected_companies:
             recommendations = get_investment_recommendation(forecasted_ratios, company)
             overall_recommendation = get_overall_recommendation(recommendations)
             
-            st.header(f"Company: {company}")
+            # Display company name in the header
+            st.header(f"Company: {company_names[company]}")
             
             if option == "Each Financial Ratio Separately":
                 selected_ratio = st.selectbox("Select Financial Ratio:", forecasted_ratios.keys())
